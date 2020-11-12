@@ -18,6 +18,7 @@ class YippyViewController: NSViewController {
     
     @IBOutlet var itemGroupScrollView: HorizontalButtonsView!
     @IBOutlet var itemCountLabel: NSTextField!
+    @IBOutlet var searchField: NSSearchField!
     
     var yippyHistory = YippyHistory(history: State.main.history, items: [])
     
@@ -33,7 +34,8 @@ class YippyViewController: NSViewController {
         super.viewDidLoad()
         
         yippyHistoryView.yippyDelegate = self
-        
+        searchField.delegate = self
+
         State.main.history.subscribe(onNext: onHistoryChange)
         State.main.history.selected.withPrevious(startWith: nil).subscribe(onNext: onSelectedChange).disposed(by: disposeBag)
         
@@ -99,7 +101,7 @@ class YippyViewController: NSViewController {
     
     override func viewWillAppear() {
         super.viewWillAppear()
-        
+
         isPreviewShowing = false
         if yippyHistory.items.count > 0 {
             State.main.history.setSelected(0)
@@ -155,12 +157,23 @@ class YippyViewController: NSViewController {
             }
         }
     }
-    
+
     func goToPreviousItem() {
         if let selected = yippyHistoryView.selected {
             if selected > 0 {
                 State.main.history.setSelected(selected - 1)
+            } else {
+                State.main.history.setSelected(nil)
+                focusOnSearchField()
             }
+        }
+    }
+
+    func focusOnSearchField() {
+        if searchField.acceptsFirstResponder {
+            NSApp.activate(ignoringOtherApps: true)
+            searchField.window?.makeKey()
+            searchField.window?.makeFirstResponder(searchField)
         }
     }
     
@@ -209,5 +222,14 @@ extension YippyViewController: YippyTableViewDelegate {
     
     func yippyTableView(_ yippyTableView: YippyTableView, didMoveItem from: Int, to: Int) {
         yippyHistory.move(from: from, to: to)
+    }
+}
+
+extension YippyViewController: NSSearchFieldDelegate {
+    func controlTextDidChange(_ obj: Notification) {
+        if let object = obj.object as? NSSearchField, object == searchField {
+            let filteredItems = yippyHistory.filtering(searchField.stringValue)
+            self.yippyHistoryView.reloadData(filteredItems, isRichText: isRichText)
+        }
     }
 }

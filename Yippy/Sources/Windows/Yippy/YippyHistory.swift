@@ -73,5 +73,16 @@ class YippyHistory {
         
         history.setSelected(to)
     }
+
+    func filtering(_ filter: String) -> [HistoryItem] {
+        if filter.count > 0 {
+            let isImageSearch = filter.contains("image")
+            return items.filter {
+                $0.getPlainString()?.contains(filter) == true || $0.getImage() != nil && isImageSearch
+            }
+        } else {
+            return self.items;
+        }
+    }
 }
 
