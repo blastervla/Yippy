@@ -12,6 +12,9 @@ import RxSwift
 import RxRelay
 
 class YippyWindowController: NSWindowController {
+
+    var inFrame: NSRect?
+    var outFrame: NSRect?
     
     override func windowDidLoad() {
         super.windowDidLoad()
@@ -36,10 +39,16 @@ class YippyWindowController: NSWindowController {
             .subscribe(onNext: {
                 [] in
                 if !$0 {
-                    self.close()
+                    NSAnimationContext.beginGrouping()
+                    NSAnimationContext.current.completionHandler = {
+                        self.close()
+                    }
+                    self.animateWindowOut()
+                    NSAnimationContext.endGrouping()
                 }
                 else {
                     self.showWindow(nil)
+                    self.animateWindowIn()
                 }
             })
     }
@@ -47,7 +56,59 @@ class YippyWindowController: NSWindowController {
     func subscribeFrameTo(position: Observable<PanelPosition>, screen: Observable<NSScreen>) -> Disposable {
         Observable.combineLatest(position, screen).subscribe(onNext: {
             (position, screen) in
+            self.inFrame = nil
+            self.outFrame = nil
             self.window?.setFrame(position.getFrame(forScreen: screen), display: true)
         })
     }
+
+    private func animateWindowIn() {
+           guard let window = self.window else { return }
+           var toFrame: NSRect
+           if let inFrame = self.inFrame {
+               toFrame = inFrame
+           } else {
+               toFrame = window.frame
+               self.inFrame = toFrame
+           }
+
+           var fromFrame: NSRect
+           if let outFrame = self.outFrame {
+               fromFrame = outFrame
+           } else {
+               let translation = getTranslation(for: toFrame)
+               fromFrame = toFrame.applying(translation)
+               self.outFrame = fromFrame
+           }
+
+           window.setFrame(fromFrame, display: false)
+           window.alphaValue = 0
+           window.animator().setFrame(toFrame, display: true, animate: true)
+           window.animator().alphaValue = 1
+       }
+
+       private func getTranslation(for frame: NSRect) -> CGAffineTransform {
+           switch State.main.panelPosition.value {
+           case .right:
+               return CGAffineTransform(translationX: frame.size.width, y: 0)
+           case .left:
+               return CGAffineTransform(translationX: -frame.size.width, y: 0)
+           case .top:
+               return CGAffineTransform(translationX: 0, y: frame.size.height)
+           case .bottom:
+               return CGAffineTransform(translationX: 0, y: -frame.size.height)
+           default:
+               return CGAffineTransform(translationX: 0, y: 0)
+           }
+       }
+
+       private func animateWindowOut() {
+           guard let window = self.window,
+                 let outFrame = self.outFrame,
+                 let inFrame = self.inFrame else { return }
+           window.setFrame(inFrame, display: false)
+           window.alphaValue = 1
+           window.animator().setFrame(outFrame, display: true, animate: true)
+           window.animator().alphaValue = 0
+       }
 }

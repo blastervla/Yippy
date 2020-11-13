@@ -29,6 +29,10 @@ class YippyViewController: NSViewController {
     var itemGroups = BehaviorRelay<[String]>(value: ["Clipboard", "Favourites", "Clipboard", "Favourites", "Clipboard", "Favourites"])
     
     var isRichText = Settings.main.showsRichText
+
+    var callerApp: NSRunningApplication?
+
+    static let closeDelta = 0.1
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -101,6 +105,8 @@ class YippyViewController: NSViewController {
     
     override func viewWillAppear() {
         super.viewWillAppear()
+
+        self.callerApp = NSWorkspace.shared.frontmostApplication
 
         searchField.stringValue = ""
         isPreviewShowing = false
@@ -189,10 +195,26 @@ class YippyViewController: NSViewController {
     
     func pasteSelected() {
         if let selected = self.yippyHistoryView.selected {
-            State.main.isHistoryPanelShown.accept(false)
-            State.main.history.setSelected(nil)
-            yippyHistory.paste(selected: selected)
+            closeCurrentWindowThenExecute {
+                self.bringCallerAppToFrontAndExecute {
+                    self.yippyHistory.paste(selected: selected)
+                }
+            }
         }
+    }
+
+    func closeCurrentWindowThenExecute(_ completionHandler: @escaping () -> Void) {
+        NSAnimationContext.beginGrouping()
+        NSAnimationContext.current.completionHandler = completionHandler
+        State.main.isHistoryPanelShown.accept(false)
+        State.main.history.setSelected(nil)
+        NSAnimationContext.endGrouping()
+    }
+
+    func bringCallerAppToFrontAndExecute(_ closure: @escaping () -> Void) {
+        self.callerApp?.activate(options: .activateIgnoringOtherApps)
+        self.callerApp = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + YippyViewController.closeDelta, execute: closure)
     }
     
     func deleteSelected() {
