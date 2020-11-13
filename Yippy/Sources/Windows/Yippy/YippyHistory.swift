@@ -12,12 +12,14 @@ import Cocoa
 class YippyHistory {
     
     let history: History
+    var allItems: [HistoryItem]
     var items: [HistoryItem]
     
     let pasteboard: NSPasteboard
     
     init(history: History, items: [HistoryItem]) {
         self.history = history
+        self.allItems = items
         self.items = items
         self.pasteboard = NSPasteboard.general
     }
@@ -61,27 +63,37 @@ class YippyHistory {
     }
     
     func move(from: Int, to: Int) {
-        history.moveItem(at: from, to: to)
+        var realFrom = from
+        var realTo = to
+        if items.count != allItems.count {
+            realFrom = allItems.firstIndex(of: items[from]) ?? from
+            realTo = allItems.firstIndex(of: items[to]) ?? to
+        }
+
+        history.moveItem(at: realFrom, to: realTo)
         
-        if to == 0 {
+        if realTo == 0 {
             let newChangeCount = pasteboard.clearContents()
             history.recordPasteboardChange(withCount: newChangeCount)
             
             // Write object
-            pasteboard.writeObjects([items[from]])
+            pasteboard.writeObjects([items[realFrom]])
         }
         
-        history.setSelected(to)
+        history.setSelected(realTo)
     }
 
-    func filtering(_ filter: String) -> [HistoryItem] {
+    func applyFilter(_ filter: String) {
         if filter.count > 0 {
             let isImageSearch = filter.contains("image")
-            return items.filter {
-                $0.getPlainString()?.contains(filter) == true || $0.getImage() != nil && isImageSearch
+            let isFileSearch = filter.contains("file")
+            self.items = allItems.filter {
+                $0.getPlainString()?.lowercased().contains(filter.lowercased()) == true
+                    || $0.getImage() != nil && isImageSearch
+                    || $0.getFileUrl() != nil && isFileSearch
             }
         } else {
-            return self.items;
+            self.items = allItems;
         }
     }
 }

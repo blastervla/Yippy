@@ -21,6 +21,8 @@ class State {
     // MARK: - Attributes
     // RxSwift
     var isHistoryPanelShown: BehaviorRelay<Bool>
+
+    var isSearching: BehaviorRelay<Bool>
     
     var panelPosition: BehaviorRelay<PanelPosition>
     
@@ -48,6 +50,7 @@ class State {
     init(settings: Settings = Settings.main, disposeBag: DisposeBag = DisposeBag()) {
         // Setup RxSwift attributes
         self.isHistoryPanelShown = BehaviorRelay<Bool>(value: false)
+        self.isSearching = BehaviorRelay<Bool>(value: false)
         self.panelPosition = BehaviorRelay<PanelPosition>(value: settings.panelPosition)
         self.previewHistoryItem = BehaviorRelay<HistoryItem?>(value: nil)
         self.launchAtLogin = BehaviorRelay<Bool>(value: LoginServiceKit.isExistLoginItems())

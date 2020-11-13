@@ -76,8 +76,8 @@ class YippyViewController: NSViewController {
         YippyHotKeys.cmd9.onDown { self.shortcutPressed(key: 9) }
         
         bindHotKeyToYippyWindow(YippyHotKeys.downArrow, disposeBag: disposeBag)
-        bindHotKeyToYippyWindow(YippyHotKeys.upArrow, disposeBag: disposeBag)
-        bindHotKeyToYippyWindow(YippyHotKeys.return, disposeBag: disposeBag)
+        bindHotKeyToYippyWindow(YippyHotKeys.upArrow, disposeBag: disposeBag, ignoreOnSearch: true)
+        bindHotKeyToYippyWindow(YippyHotKeys.return, disposeBag: disposeBag, ignoreOnSearch: true)
         bindHotKeyToYippyWindow(YippyHotKeys.escape, disposeBag: disposeBag)
         bindHotKeyToYippyWindow(YippyHotKeys.pageDown, disposeBag: disposeBag)
         bindHotKeyToYippyWindow(YippyHotKeys.pageUp, disposeBag: disposeBag)
@@ -95,13 +95,14 @@ class YippyViewController: NSViewController {
         bindHotKeyToYippyWindow(YippyHotKeys.cmd7, disposeBag: disposeBag)
         bindHotKeyToYippyWindow(YippyHotKeys.cmd8, disposeBag: disposeBag)
         bindHotKeyToYippyWindow(YippyHotKeys.cmd9, disposeBag: disposeBag)
-        bindHotKeyToYippyWindow(YippyHotKeys.cmdDelete, disposeBag: disposeBag)
-        bindHotKeyToYippyWindow(YippyHotKeys.space, disposeBag: disposeBag)
+        bindHotKeyToYippyWindow(YippyHotKeys.cmdDelete, disposeBag: disposeBag, ignoreOnSearch: true)
+        bindHotKeyToYippyWindow(YippyHotKeys.space, disposeBag: disposeBag, ignoreOnSearch: true)
     }
     
     override func viewWillAppear() {
         super.viewWillAppear()
 
+        searchField.stringValue = ""
         isPreviewShowing = false
         if yippyHistory.items.count > 0 {
             State.main.history.setSelected(0)
@@ -110,7 +111,7 @@ class YippyViewController: NSViewController {
             State.main.history.setSelected(nil)
         }
     }
-    
+
     func onHistoryChange(_ history: [HistoryItem]) {
         itemCountLabel.stringValue = "\(history.count) items"
         
@@ -141,13 +142,22 @@ class YippyViewController: NSViewController {
         }
     }
     
-    func bindHotKeyToYippyWindow(_ hotKey: YippyHotKey, disposeBag: DisposeBag) {
+    func bindHotKeyToYippyWindow(_ hotKey: YippyHotKey, disposeBag: DisposeBag, ignoreOnSearch: Bool = false) {
         State.main.isHistoryPanelShown
             .distinctUntilChanged()
             .subscribe(onNext: { [] in
                 hotKey.isPaused = !$0
             })
             .disposed(by: disposeBag)
+
+        if ignoreOnSearch {
+            State.main.isSearching
+                .distinctUntilChanged()
+                .subscribe(onNext: { [] in
+                    hotKey.isPaused = $0
+                })
+                .disposed(by: disposeBag)
+        }
     }
     
     func goToNextItem() {
@@ -228,8 +238,23 @@ extension YippyViewController: YippyTableViewDelegate {
 extension YippyViewController: NSSearchFieldDelegate {
     func controlTextDidChange(_ obj: Notification) {
         if let object = obj.object as? NSSearchField, object == searchField {
-            let filteredItems = yippyHistory.filtering(searchField.stringValue)
-            self.yippyHistoryView.reloadData(filteredItems, isRichText: isRichText)
+            yippyHistory.applyFilter(searchField.stringValue)
+            self.yippyHistoryView.reloadData(yippyHistory.items, isRichText: isRichText)
+        }
+    }
+
+    func controlTextDidBeginEditing(_ obj: Notification) {
+        if let object = obj.object as? NSSearchField, object == searchField {
+            State.main.isSearching.accept(true)
+        }
+    }
+
+    func controlTextDidEndEditing(_ obj: Notification) {
+        if let object = obj.object as? NSSearchField, object == searchField {
+            State.main.isSearching.accept(false)
+            if yippyHistoryView.selected == nil {
+                State.main.history.setSelected(0)
+            }
         }
     }
 }
