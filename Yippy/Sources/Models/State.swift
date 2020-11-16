@@ -37,7 +37,10 @@ class State {
     var pastesRichText: BehaviorRelay<Bool>
     
     var disposeBag: DisposeBag
-    
+
+    // MARK: - Animation attributes
+    var previewHistoryItemFrame: NSRect?
+
     // History
     var historyCache: HistoryCache!
     var history: History!
@@ -53,6 +56,7 @@ class State {
         self.isSearching = BehaviorRelay<Bool>(value: false)
         self.panelPosition = BehaviorRelay<PanelPosition>(value: settings.panelPosition)
         self.previewHistoryItem = BehaviorRelay<HistoryItem?>(value: nil)
+        self.previewHistoryItemFrame = nil
         self.launchAtLogin = BehaviorRelay<Bool>(value: LoginServiceKit.isExistLoginItems())
         self.showsRichText = BehaviorRelay<Bool>(value: settings.showsRichText)
         self.pastesRichText = BehaviorRelay<Bool>(value: settings.pastesRichText)

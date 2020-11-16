@@ -238,10 +238,16 @@ class YippyViewController: NSViewController {
         if let selected = yippyHistoryView.selected {
             isPreviewShowing = !isPreviewShowing
             if isPreviewShowing {
+                let selectedCellFrame = yippyHistoryView.rect(ofRow: selected)
+                let windowSpaceCellFrame = yippyHistoryView.convert(selectedCellFrame, to: view)
+                let screenSpaceCellFrame = self.view.window?.convertToScreen(windowSpaceCellFrame)
+                State.main.previewHistoryItemFrame = screenSpaceCellFrame
+
                 State.main.previewHistoryItem.accept(yippyHistory.items[selected])
             }
             else {
                 State.main.previewHistoryItem.accept(nil)
+                State.main.previewHistoryItemFrame = nil
             }
         }
     }

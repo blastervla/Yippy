@@ -20,6 +20,9 @@ class PreviewWindowController: NSWindowController {
     var disposeBag = DisposeBag()
     
     var previewItem: HistoryItem?
+
+    var fromFrame: NSRect?
+    var toFrame: NSRect?
     
     private static func createPreviewViewController<T>() -> T where T: PreviewViewController {
         let storyboard = NSStoryboard(name: NSStoryboard.Name("Main"), bundle: nil)
@@ -55,7 +58,14 @@ class PreviewWindowController: NSWindowController {
                     self.updateController(forItem: item)
                 }
                 else {
-                    self.close()
+                    NSAnimationContext.beginGrouping()
+                    NSAnimationContext.current.completionHandler = {
+                        self.close()
+                    }
+                    self.animateOut()
+                    self.fromFrame = nil
+                    self.toFrame = nil
+                    NSAnimationContext.endGrouping()
                 }
             })
     }
@@ -63,7 +73,7 @@ class PreviewWindowController: NSWindowController {
     func updateController(forItem item: HistoryItem) {
         let controller = self.getViewController(forItem: item)
         self.contentViewController = controller
-        window?.setFrame(controller.configureView(forItem: item), display: true)
+        animateIn(forItem: item, controller: controller)
     }
     
     func getViewController(forItem item: HistoryItem) -> PreviewViewController {
@@ -85,5 +95,56 @@ class PreviewWindowController: NSWindowController {
                 updateController(forItem: item)
             }
         }
+    }
+
+    private func animateIn(forItem item: HistoryItem, controller: PreviewViewController) {
+        if var startFrame = State.main.previewHistoryItemFrame {
+            var fromAlpha: CGFloat = 0
+            fromFrame = startFrame
+            if let toFrame = self.toFrame {
+                fromAlpha = 1
+                startFrame = toFrame
+            }
+            let endFrame = controller.configureView(forItem: item)
+            toFrame = endFrame
+
+            animate(fromFrame: startFrame, to: endFrame, fromAlpha: fromAlpha, to: 1)
+        }
+    }
+
+    private func animateOut() {
+        if let startFrame = self.toFrame, let endFrame = self.fromFrame {
+            animate(fromFrame: startFrame, to: endFrame, fromAlpha: 1, to: 0)
+        }
+    }
+
+    private func animate(fromFrame startFrame: NSRect, to endFrame: NSRect, fromAlpha startAlpha: CGFloat, to endAlpha: CGFloat) {
+        window?.setFrame(startFrame, display: false)
+        window?.alphaValue = startAlpha
+
+        // Set up scaling
+        let resizeAnimation = CABasicAnimation(keyPath: "bounds.size")
+        resizeAnimation.fromValue = startFrame.size
+        resizeAnimation.toValue = endFrame.size
+        resizeAnimation.fillMode = CAMediaTimingFillMode.forwards
+        resizeAnimation.isRemovedOnCompletion = false
+
+        let pathAnimation = CAKeyframeAnimation(keyPath: "position")
+        pathAnimation.calculationMode = CAAnimationCalculationMode.paced;
+        pathAnimation.fillMode = CAMediaTimingFillMode.forwards;
+        pathAnimation.isRemovedOnCompletion = false
+
+        let curvedPath = CGMutablePath()
+        curvedPath.move(to: startFrame.origin)
+        // About curves: https://www.bignerdranch.com/blog/core-graphics-part-4-a-path-a-path/
+        curvedPath.addQuadCurve(to: endFrame.origin, control: CGPoint(x: startFrame.origin.x,  y: endFrame.origin.y))
+        pathAnimation.path = curvedPath
+
+        window?.animations = [
+            "frameOrigin": pathAnimation,
+            "frameSize": resizeAnimation
+        ]
+        window?.animator().setFrame(endFrame, display: true)
+        window?.animator().alphaValue = endAlpha
     }
 }
