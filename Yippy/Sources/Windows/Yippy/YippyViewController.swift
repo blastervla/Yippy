@@ -143,6 +143,7 @@ class YippyViewController: NSViewController {
             yippyHistoryView.reloadItem(selected)
             
             if isPreviewShowing {
+                State.main.previewHistoryItemFrame = screenSpaceCellFrame(selected)
                 State.main.previewHistoryItem.accept(yippyHistory.items[selected])
             }
         }
@@ -234,15 +235,17 @@ class YippyViewController: NSViewController {
         pasteSelected()
     }
     
+    fileprivate func screenSpaceCellFrame(_ selected: Int) -> NSRect? {
+        let selectedCellFrame = yippyHistoryView.rect(ofRow: selected)
+        let windowSpaceCellFrame = yippyHistoryView.convert(selectedCellFrame, to: view)
+        return self.view.window?.convertToScreen(windowSpaceCellFrame)
+    }
+
     func togglePreview() {
         if let selected = yippyHistoryView.selected {
             isPreviewShowing = !isPreviewShowing
             if isPreviewShowing {
-                let selectedCellFrame = yippyHistoryView.rect(ofRow: selected)
-                let windowSpaceCellFrame = yippyHistoryView.convert(selectedCellFrame, to: view)
-                let screenSpaceCellFrame = self.view.window?.convertToScreen(windowSpaceCellFrame)
-                State.main.previewHistoryItemFrame = screenSpaceCellFrame
-
+                State.main.previewHistoryItemFrame = screenSpaceCellFrame(selected)
                 State.main.previewHistoryItem.accept(yippyHistory.items[selected])
             }
             else {
