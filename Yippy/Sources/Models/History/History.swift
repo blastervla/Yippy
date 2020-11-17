@@ -180,6 +180,7 @@ extension History: PasteboardMonitorDelegate {
                     }
                 }
                 let historyItem = HistoryItem(unsavedData: data, cache: cache)
+                guard historyItem.allData() != self.items.first?.allData() else { continue }
                 insertItem(historyItem, at: 0)
                 let selected = (_selected.value ?? -1) + 1
                 setSelected(selected)
