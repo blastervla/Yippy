@@ -23,6 +23,8 @@ class PreviewWindowController: NSWindowController {
 
     var fromFrame: NSRect?
     var toFrame: NSRect?
+
+    private static let easeOutCirc = CAMediaTimingFunction(controlPoints: 0.075, 0.82, 0.165, 1)
     
     private static func createPreviewViewController<T>() -> T where T: PreviewViewController {
         let storyboard = NSStoryboard(name: NSStoryboard.Name("Main"), bundle: nil)
@@ -136,10 +138,11 @@ class PreviewWindowController: NSWindowController {
 
         let curvedPath = CGMutablePath()
         curvedPath.move(to: startFrame.origin)
-        // About curves: https://www.bignerdranch.com/blog/core-graphics-part-4-a-path-a-path/
         curvedPath.addQuadCurve(to: endFrame.origin, control: CGPoint(x: startFrame.origin.x,  y: endFrame.origin.y))
         pathAnimation.path = curvedPath
 
+        NSAnimationContext.current.timingFunction = PreviewWindowController.easeOutCirc
+        NSAnimationContext.current.duration = 0.5
         window?.animations = [
             "frameOrigin": pathAnimation,
             "frameSize": resizeAnimation
